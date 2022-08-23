@@ -31,28 +31,24 @@ usb: image
 	  fi
 	fi
 
-	# find the last mounted parition
-	last_partition="$$(sudo fdisk --list | awk '/^\/dev\/.*/ {} END {print $$1}')"
+	# fetch last disk by pattern matching `fdisk`
+	last_disk="$$(sudo fdisk --list | awk -F '[ :]' '$$0 ~ "^Disk /dev/" {path=$$2} END {print path}')"
 	boot_partition="$$(findmnt --noheadings --output source --target /boot)"
 	this_partition="$$(findmnt --noheadings --output source --target "$${0}")"
-
-	# find the disks that partitions above are on
-	last_disk="$$(lsblk --noheadings --inverse --output type,path $${last_partition} 2>/dev/null | awk '$$1 == "disk" {print $$2; exit;}')"
+	# use inverted `lsblk` tree to find which disks above partitions are on
 	boot_disk="$$(lsblk --noheadings --inverse --output type,path $${boot_partition} 2>/dev/null | awk '$$1 == "disk" {print $$2; exit;}')"
 	this_disk="$$(lsblk --noheadings --inverse --output type,path $${this_partition} 2>/dev/null | awk '$$1 == "disk" {print $$2; exit;}')"
 
-	# now do some tests to ensure we've got something useful to work with in terms of discerning a last inserted USB device
+	# do some tests to ensure we've got something useful to work with in terms of discerning a last inserted USB device
 	if [[ -z "$${last_disk}" ]] || \
 	   [[ "$${last_disk}" == "$${this_disk}" ]] || \
 	   [[ "$${last_disk}" == "$${boot_disk}" ]] || \
 	   ! lsblk --raw --noheadings --output tran,type,rm "$${last_disk}" | grep --basic-regexp --quiet '^usb disk 1'; then
-	     >&2 echo "No usable device found. Please insert a USB disk and try again."
-	     exit 2
+	    >&2 echo "No usable device found. Please insert a USB disk and try again."
+	    exit 2
 	fi
 
 	target_device="$${last_disk}"
 	# print ANSI escape codes to bold and underline the USB device node path
 	printf '\n%s \033[1m\033[4m%s\033[0m\n' "Writing ISO file to USB disk at" $${target_device}
-	sudo cp images/debian-11-amd64-CD-1.iso $${target_device}
-	echo "Done!"
-
+	sudo cp images/debian-11-amd64-CD-1.iso $${target_device} && echo "Done!"
