@@ -19,7 +19,7 @@ image:
 			firmware/$(firmware_iwlwifi_deb)
 
 
-usb: SHELL := bash
+usb: SHELL := /bin/bash
 usb: image
 	# find the last inserted USB drive and write ISO to it
 	# we need superuser access to deal with `fdisk` so explain that first and obtain permission if need be
